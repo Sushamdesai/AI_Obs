@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: insuraobserve
+      POSTGRES_USER: insuraobserve
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U insuraobserve -d insuraobserve"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_NAME: ${APP_NAME:-InsuraObserve AI}
+      APP_ENV: ${APP_ENV:-demo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DATA_PLATFORM_PROVIDER: ${DATA_PLATFORM_PROVIDER:-local}
+      OBSERVABILITY_PROVIDER: ${OBSERVABILITY_PROVIDER:-local}
+      LLM_PROVIDER: ${LLM_PROVIDER:-deterministic}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://insuraobserve@postgres:5432/insuraobserve}
+      LOCAL_DATA_PATH: ${LOCAL_DATA_PATH:-/tmp/insuraobserve.sqlite3}
+      SIMULATOR_BATCH_SIZE: ${SIMULATOR_BATCH_SIZE:-12}
+      SIMULATOR_INTERVAL_SECONDS: ${SIMULATOR_INTERVAL_SECONDS:-5}
+      DATABRICKS_HOST: ${DATABRICKS_HOST:-}
+      DATABRICKS_HTTP_PATH: ${DATABRICKS_HTTP_PATH:-}
+      DATABRICKS_TOKEN: ${DATABRICKS_TOKEN:-}
+      DATABRICKS_CATALOG: ${DATABRICKS_CATALOG:-insurance_observability}
+      DYNATRACE_URL: ${DYNATRACE_URL:-}
+      DYNATRACE_API_TOKEN: ${DYNATRACE_API_TOKEN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
